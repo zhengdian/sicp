@@ -16,7 +16,7 @@
 (define (timed-prime-test n)
   (define (start-prime-test n start-time)
     (if (prime? n)
-        (report-prime (- (runtime) start-time))
+        (report-prime (- (runtime) start-time)) 
         false))
   (define (report-prime elapsed-time)
     (display " *** ")
@@ -27,11 +27,8 @@
   (start-prime-test n (runtime)))
 
 (define (search-for-primes begin num)
-  
   (if (> num 0) (search-for-primes (+ begin 2) (if (timed-prime-test begin) (- num 1)
                                                    num))))
 
-  
-
-
-(search-for-primes 1001 3)
+ 
+(search-for-primes 100001 3)
