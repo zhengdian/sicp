@@ -27,8 +27,10 @@
   (start-prime-test n (runtime)))
 
 (define (search-for-primes begin num)
-  (if (> num 0) (search-for-primes (+ begin 2) (if (timed-prime-test begin) (- num 1)
-                                                   num))))
+  (if (> num 0)
+      (if (timed-prime-test begin)
+           (search-for-primes (+ begin 2) (- num 1))
+           (search-for-primes (+ begin 2) num))))
 
  
 (search-for-primes 100001 3)
