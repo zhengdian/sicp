@@ -2,14 +2,21 @@
 (define (fast-prime? n times)
   (define (fermat-test n)
     (define (try-it a)
-      (define (expmod base exp m)
+      (define (expmod base exp m)  
+        (cond ((= exp 0) 1)  
+              ((even? exp)  
+               (check-nontrivial-sqrt (expmod base (/ exp 2) m) m)) ;; look here  
+              (else  
+               (remainder (* base (expmod base (- exp 1) m)) m))))  
+      (define (check-nontrivial-sqrt n m)
         (define (square x)
           (* x x))
-        (cond ((= exp 0) 1)
-              ((even? exp)
-               (remainder (square (expmod base (/ exp 2) m)) m))
-              (else
-               (remainder (* base (expmod base (- exp 1) m)) m))))
+        (let ((x (remainder (square n) m)))  
+          (if (and (not (= n 1))  
+                   (not (= n (- m 1)))  
+                   (= x 1))  
+              0  
+              x)))
       (= (expmod a n n) a))
     (try-it (+ 1 (random (- n 1)))))
   (cond ((= times 0) true)
