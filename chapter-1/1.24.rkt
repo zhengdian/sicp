@@ -1,0 +1,40 @@
+#lang planet neil/sicp
+(define (fast-prime? n times)
+  (define (fermat-test n)
+    (define (try-it a)
+      (define (expmod base exp m)
+        (define (square x)
+          (* x x))
+        (cond ((= exp 0) 1)
+              ((even? exp)
+               (remainder (square (expmod base (/ exp 2) m)) m))
+              (else
+               (remainder (* base (expmod base (- exp 1) m)) m))))
+      (= (expmod a n n) a))
+    (try-it (+ 1 (random (- n 1)))))
+  (cond ((= times 0) true)
+        ((fermat-test n) (fast-prime? n (- times 1)))
+        (else false)))
+
+(define (timed-prime-test n)
+  (define (start-prime-test n start-time)
+    (if (fast-prime? n 4)
+        (report-prime (- (runtime) start-time)) 
+        false))
+  (define (report-prime elapsed-time)
+    (display " *** ")
+    (display elapsed-time)
+    true)
+  (newline)
+  (display n)
+  (start-prime-test n (runtime)))
+
+(define (search-for-primes begin num)
+  (if (> num 0)
+      (if (timed-prime-test begin)
+           (search-for-primes (+ begin 2) (- num 1))
+           (search-for-primes (+ begin 2) num))))
+
+ 
+(search-for-primes 1000001 3)
+;;当输入从1000增加到10^6的时候，输出并没有变为lg1000 = 3，而是1.7左右，这说明当n增大的时候，通过第一次费马检查的概率开始减小，很多数不需要4次检查就被否定了。
