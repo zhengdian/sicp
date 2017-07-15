@@ -17,7 +17,7 @@
                    (= x 1))  
               0  
               x)))
-      (= (expmod a n n) a))
+      (= (expmod a (- n 1) n) 1))
     (try-it (+ 1 (random (- n 1)))))
   (cond ((= times 0) true)
         ((fermat-test n) (fast-prime? n (- times 1)))
@@ -29,3 +29,5 @@
 (fast-prime? 2465 4)
 (fast-prime? 2821 4)
 (fast-prime? 6601 4)
+(fast-prime? 1000033 4)
+(fast-prime? 1000037 4)
