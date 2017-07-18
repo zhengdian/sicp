@@ -1,16 +1,17 @@
 #lang planet neil/sicp
 (define (sum term a next b)
-  (if (> a b)
-      0
-      (+ (term a)
-         (sum term (next a) next b))))
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (+ result (term a)))))
+  (iter a 0))
 
 (define (integral f a b dx)
   (define (add-dx x) (+ x dx))
   (* (sum f (+ a (/ dx 2.0)) add-dx b)
      dx))
 
-;;之前的的错误在于Fu写成F,与f被当做同一个过程了，由此可知大小写不敏感
+;;之前的的错误在于Fu写成F,与f被当做同一个过程了,由此可知大小写不敏感
 (define (my-integral f a b n)
   (define (Fu x)
     (cond ((or (= x n) (= x 0)) (f (+ a (* x (/ (- b a) n)))))
