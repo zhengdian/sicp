@@ -14,7 +14,7 @@
         (iter (next x) (combiner result x))))
   (iter a null-value))
 
-
+;;use accumulate define product
 (define (product-recurve term a next b)
   (accumulate-recurve * 1 term a next b))
 
@@ -29,3 +29,9 @@
 
 (factorial-recurve 5)
 (factorial-iter 5)
+
+;;use accumulate define sum
+(define (sum-recurve term a next b)
+  (accumulate-recurve + 0 term a next b))
+
+(sum-recurve (lambda (x) x) 1 (lambda (x) (+ x 1)) 10)
