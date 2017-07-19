@@ -11,7 +11,7 @@
   (define (iter x result)
     (if (> x b)
         result
-        (iter (next x) (combiner result x))))
+        (iter (next x) (combiner result (term x)))))
   (iter a null-value))
 
 ;;use accumulate define product
