@@ -19,3 +19,14 @@
                1.0))
 
 (gold)
+
+(define (x-x-no-mean)
+  (fixed-point (lambda (x) (/ (log 1000) (log x)))
+               10))
+
+(define (x-x-mean)
+  (fixed-point (lambda (x) (/ (+ (/ (log 1000) (log x)) x) 2))
+               10))
+
+;;(x-x-no-mean);;40次
+(x-x-mean);;12次
