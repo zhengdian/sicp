@@ -1,5 +1,4 @@
 #lang planet neil/sicp
-;;f = 1 / (1 + f) => 1/f = 1 + f => 1/f is gold
 (define (cont-frac n d k)
   (define (cont-frac-recur n d i)
     (if (= k i)
