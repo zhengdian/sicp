@@ -6,10 +6,11 @@
 
 
 (define (make-rat n d)
-  (let ((g (gcd n d)))
-    (if (> (/ d g) 0)
-        (cons (/ n g) (/ d g))
-        (cons (/ n (- g)) (/ d (- g))))))
+  (let ((g (gcd n d)))    
+    (let ((d/g (/ d g)))
+      (if (> d/g 0)
+          (cons (/ n g) d/g)
+          (cons (/ n (- g)) (- d/g))))))
 
 (define (numer x)
   (car x))
