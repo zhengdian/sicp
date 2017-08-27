@@ -11,3 +11,6 @@
 
 (car (cons 4 1))
 (cdr (cons 4 56))
+
+;;代换模型
+((lambda (p q) p) 4 1)
