@@ -2,10 +2,18 @@
 (define (make-interval a b) (cons a b))
 
 (define (upper-bound x)
-  (car x))
+  (let ((a (car x))
+        (b (cdr x)))
+    (if (> a b)
+        a
+        b)))
 
 (define (lower-bound x)
-  (cdr x))
+  (let ((a (car x))
+        (b (cdr x)))
+    (if (< a b)
+        a
+        b)))
 
 (define (add-interval x y)
   (make-interval (+ (lower-bound x) (lower-bound y))

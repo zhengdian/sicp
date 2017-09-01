@@ -15,9 +15,15 @@
         a
         b)))
 
+
 (define (add-interval x y)
   (make-interval (+ (lower-bound x) (lower-bound y))
                  (+ (upper-bound x) (upper-bound y))))
+
+(define (sub-interval x y)
+  (add-interval x
+                (make-interval (- (upper-bound y))
+                               (- (lower-bound y)))))
 
 (define (mul-interval x y)
   (let ((p1 (* (lower-bound x) (lower-bound y)))
@@ -31,3 +37,6 @@
   (mul-interval x
                 (make-interval (/ 1.0 (upper-bound y))
                                (/ 1.0 (lower-bound y)))))
+
+(mul-interval (make-interval 1 8) (make-interval 3 5));7 * 2 != 37
+(div-interval (make-interval 1 8) (make-interval 3 5));7 / 2 != 2.4

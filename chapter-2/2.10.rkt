@@ -1,5 +1,6 @@
 #lang planet neil/sicp
-(define (make-interval a b) (cons a b))
+(define (make-interval a b)
+      (cons a b))
 
 (define (upper-bound x)
   (let ((a (car x))
@@ -19,6 +20,11 @@
   (make-interval (+ (lower-bound x) (lower-bound y))
                  (+ (upper-bound x) (upper-bound y))))
 
+(define (sub-interval x y)
+  (add-interval x
+                (make-interval (- (upper-bound y))
+                               (- (lower-bound y)))))
+
 (define (mul-interval x y)
   (let ((p1 (* (lower-bound x) (lower-bound y)))
         (p2 (* (lower-bound x) (upper-bound y)))
@@ -28,6 +34,13 @@
                    (max p1 p2 p3 p4))))
 
 (define (div-interval x y)
-  (mul-interval x
+  (define (cross-zero in)
+    (< (* (lower-bound in) (upper-bound in)) 0))
+  (if (cross-zero y)
+      (display "div zero error")
+      (mul-interval x
                 (make-interval (/ 1.0 (upper-bound y))
-                               (/ 1.0 (lower-bound y)))))
+                               (/ 1.0 (lower-bound y))))))
+
+
+(div-interval (make-interval 4 5) (make-interval -1 3))
