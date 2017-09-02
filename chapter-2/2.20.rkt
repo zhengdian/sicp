@@ -21,5 +21,21 @@
       (list x)
       (append (list x) (same y))))
 
+(define (same-parity-iter x . y)
+  (define (same-iter items out)
+    (if (null? items)
+        out
+        (same-iter (cdr items)
+                   (append out
+                           (if (parity? x (car items))
+                               (list (car items))
+                               (list))))))
+  (if (= (length y) 0)
+      (list x)
+      (append (list x) (same-iter y (list)))))
+
 (same-parity 2 3 5 6 7)
 (same-parity 1 2 3 5 6 7)
+
+(same-parity-iter 2 3 5 6 7)
+(same-parity-iter 1 2 3 5 6 7)
