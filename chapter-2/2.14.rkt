@@ -90,6 +90,15 @@
       (display "x.lower-bound and y.lower-bound must >0")))
 
 
-(mul-interval (make-center-percent 6 0.1) (make-center-percent 7 0.25))
-(mul-interval-per (make-center-percent 6 0.1) (make-center-percent 7 0.25))
+(define (par1 r1 r2)
+  (div-interval (mul-interval r1 r2)
+                (mul-interval r1 r2)))
 
+(define (par2 r1 r2)
+  (let ((one (make-interval 1 1)))
+    (div-interval one
+                  (add-interval (div-interval one r1)
+                                (div-interval one r2)))))
+
+(par1 (make-interval 51 0.2) (make-interval 49 0.1))
+(par2 (make-interval 51 0.2) (make-interval 49 0.1))
