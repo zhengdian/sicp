@@ -4,19 +4,12 @@
       list2
       (cons (car list1) (append (cdr list1) list2))))
 
-
-(define (length items)
-  (define (length-iter _items count)
-    (if (null? _items)
-        count
-        (length-iter (cdr _items) (+ 1 count))))
-  (length-iter items 0))
+(define (parity? a b)
+  (if (= (remainder a 2) (remainder b 2))
+      true
+      false))
 
 (define (same-parity x . y)
-  (define (parity? a b)
-    (if (= (remainder a 2) (remainder b 2))
-        true
-        false))
   (define (same items)
     (if (null? items)
           (list)
