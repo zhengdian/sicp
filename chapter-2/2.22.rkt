@@ -12,7 +12,7 @@
       nil
       (cons (square (car items)) (square-list (cdr items)))))
 
-;change cons to append
+;change cons to append cause (cons list1 list2) != (append list1 list2)
 (define (square-list-iter items)
   (define (iter things answer)
     (if (null? things)
