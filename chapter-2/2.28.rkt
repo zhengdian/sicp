@@ -8,5 +8,7 @@
         ((not (pair? (car x))) (append (list (car x)) (fringe (cdr x))))
         (else (append (fringe (car x)) (fringe (cdr x))))))
 
+
 (display (fringe x))
+
 (display (fringe (list x x)))
