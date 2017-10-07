@@ -46,4 +46,8 @@
        (filter sum-equal?
                (unique-triple n))))
 
+(display (unique-triple 5))
+
+(newline)
+
 (display (equal-sum-triple 6 9))
