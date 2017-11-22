@@ -56,8 +56,8 @@
                            (edge2-frame frame))))))
 
 
-(define (make-segment p1 p2)
-  (cons p1 p2))
+(define (make-segment v1 v2)
+  (cons v1 v2))
 
 (define (start-segment seg)
   (car seg))
@@ -69,7 +69,7 @@
   (lambda (frame)
     (for-each
      (lambda (segment)
-       (draw-line
+       (line
         ((frame-coord-map frame) (start-segment segment))
         ((frame-coord-map frame) (end-segment segment))))
      segment-list)))
