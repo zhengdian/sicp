@@ -24,17 +24,10 @@
         (else (intersection-set (cdr set1) set2))))
 
 (define (union-set set1 set2)
-  (cond ((and (null? set1) (null? set2)) '())
-        ((null? set1) set2)
-        ((null? set2) set1)
-        (else
-         (let ((rest-union (union-set (cdr set1) set2)))
-           (if (element-of-set? (car set1) rest-union)
-               rest-union
-               (cons (car set1) rest-union))))))
+  (append set1 set2))
 
 (display (unique-set (list 2 3 2 1 3 2 2)))
 (newline)
 (display (intersection-set (list 2 3 9 1 2 3 4 5 9) (list 4 8 2 2 3 4 7 8)))
 (newline)
-(display (union-set (list 2 1 3 1 2 3 4 5 9) (list 7 8 3 2 3 4 7 8)))
+(display (unique-set (union-set (list 2 1 3 1 2 3 4 5 9) (list 7 8 3 2 3 4 7 8))))
