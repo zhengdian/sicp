@@ -265,7 +265,6 @@
 (put-coercion 'scheme-number 'rational (lambda (x)
                                          (make-rational (contents x) 1)))
 
-((get-coercion 'scheme-number 'rational) 3)
 (add (make-rational 2 3) (make-scheme-number 3))
 
 (add (make-rational 4 6) (make-scheme-number 3) (make-rational 2 3) (make-rational 2 3))
