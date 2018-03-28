@@ -1,5 +1,40 @@
 #lang planet neil/sicp
 
+(define (make-table)
+  (let [[local-table (list '*table*)]]
+    (define (lookup key-1 key-2)
+      (let [[subtable (assoc key-1 (cdr local-table))]]
+        (if subtable
+            (let [[record (assoc key-2 (cdr subtable))]]
+              (if record
+                  (cdr record)
+                  false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let [[subtable (assoc key-1 (cdr local-table))]]
+        (if subtable
+            (let [[record (assoc key-2 (cdr subtable))]]
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! subtable
+                            (cons (cons key-2 value)
+                                  (cdr subtable)))))
+            (set-cdr! local-table
+                      (cons (list key-1
+                                  (cons key-2 value))
+                            (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation -- TABLE" m))))
+    dispatch))
+
+(define coercion-table (make-table))
+(define get-coercion (coercion-table 'lookup-proc))
+(define put-coercion (coercion-table 'insert-proc!))
+
+
 (define global-array '())
 
 (define (make-entry k v) (list k v))
@@ -33,17 +68,11 @@
       (cdr datum)
       (error "Bad tagged datum -- CONTENTS" datum)))
 
-(define (apply-generic op . args)
-  (let [[type-tags (map type-tag args)]]
-    (let [[proc (get op type-tags)]]
-      (if proc
-          (apply proc (map contents args))
-          (error "No methos for these types -- APPLY-GENERIC" (list op type-tags))))))
 
-(define (add x y) (apply-generic 'add x y))
-(define (sub x y) (apply-generic 'sub x y))
-(define (mul x y) (apply-generic 'mul x y))
-(define (div x y) (apply-generic 'div x y))
+(define (add . args) (apply apply-generic 'add args));;must add apply
+(define (sub . args) (apply apply-generic 'sub args))
+(define (mul . args) (apply apply-generic 'mul args))
+(define (div . args) (apply apply-generic 'div args))
 
 (define (install-scheme-number-package)
   (define (tag x) (attach-tag 'scheme-number x))
@@ -204,10 +233,40 @@
   ((get 'make-complex-from-mag-ang) r a))
 
 
+(define (apply-generic op . args)
+  (let [[type-tags (map type-tag args)]]
+    (cond ((= (length args) 2)
+           (let [[proc (get op type-tags)]]
+             (if proc
+                 (apply proc (map contents args))
+                 (let [[type1 (car type-tags)]
+                    [type2 (cadr type-tags)]
+                    [a1 (car args)]
+                    [a2 (cadr args)]]
+                (let [[t1->t2 (get-coercion type1 type2)]
+                      [t2->t1 (get-coercion type2 type1)]]
+                  (cond (t1->t2
+                         (apply-generic op (t1->t2 a1) a2))
+                        (t2->t1
+                         (apply-generic op a1 (t2->t1 a2)))
+                        (else
+                         (error "No method for these types" (list op type-tags)))))))))
+          ((> (length args) 2)
+           (let [[front-two (apply-generic op (car args) (cadr args))]]
+             (apply apply-generic op (cons front-two (cddr args)))))
+          (else "No method for these types" (list op type-tags)))))
+
 (install-scheme-number-package)
 (install-rational-package)
 (install-rectangular-package)
 (install-polar-package)
 (install-complex-package)
 
-(add (make-rational 4 6) (make-rational 2 3) (make-rational 2 3))
+(put-coercion 'scheme-number 'rational (lambda (x)
+                                         (make-rational (contents x) 1)))
+
+((get-coercion 'scheme-number 'rational) 3)
+(add (make-rational 2 3) (make-scheme-number 3))
+
+(add (make-rational 4 6) (make-scheme-number 3) (make-rational 2 3) (make-rational 2 3))
+
