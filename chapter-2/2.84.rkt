@@ -232,6 +232,44 @@
 (define (make-complex-from-mag-ang r a)
   ((get 'make-from-mag-ang 'complex) r a))
 
+(define (make-int-number n)
+  (attach-tag 'int n))
+
+(define (install-raise)
+  ;;internal procedures
+  (define (int->rational n)
+    (make-rational (contents n) 1))
+
+  (define (rational->scheme n)
+    (let [[content (contents n)]]
+      (make-scheme-number (/ (car content) (cdr content)))))
+
+  (define (scheme->complex n)
+    (make-complex-from-real-imag n 0))
+
+  ;;interface
+  (put 'raise 'int int->rational)
+  (put 'raise 'rational rational->scheme)
+  (put 'raise 'scheme-number scheme->complex)
+
+  (put 'type-level 'int 0)
+  (put 'type-level 'rational 1)
+  (put 'type-level 'scheme-number 2)
+  (put 'type-level 'complex 3)
+  'done)
+
+(define (raise n)
+  (let [[raise-op (get 'raise (type-tag n))]]
+    (if raise-op
+        (raise-op n)
+        (error "No raise op for " n))))
+
+(define (type-level n)
+  (let [[type-level-op (get 'type-level (type-tag n))]]
+    (if type-level
+        type-level-op
+        (error "No such type-level" n))))
+
 
 (define (apply-generic op . args)
   (let [[type-tags (map type-tag args)]]
@@ -261,11 +299,11 @@
 (install-rectangular-package)
 (install-polar-package)
 (install-complex-package)
+(install-raise)
 
-(put-coercion 'scheme-number 'rational (lambda (x)
-                                         (make-rational (contents x) 1)))
 
-(add (make-rational 2 3) (make-scheme-number 3))
 
-(add (make-rational 4 6) (make-scheme-number 3) (make-rational 2 3) (make-rational 2 3))
+
+
+
 

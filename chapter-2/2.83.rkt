@@ -262,10 +262,48 @@
 (install-polar-package)
 (install-complex-package)
 
-(put-coercion 'scheme-number 'rational (lambda (x)
-                                         (make-rational (contents x) 1)))
 
-(add (make-rational 2 3) (make-scheme-number 3))
+;;2.83
+(define (install-raise)
+  ;;internal procedures
+  (define (int->rational n)
+    (make-rational (contents n) 1))
 
-(add (make-rational 4 6) (make-scheme-number 3) (make-rational 2 3) (make-rational 2 3))
+  (define (rational->scheme n)
+    (let [[content (contents n)]]
+      (make-scheme-number (/ (car content) (cdr content)))))
 
+  (define (scheme->complex n)
+    (make-complex-from-real-imag n 0))
+
+  ;;interface
+  (put 'raise 'int int->rational)
+  (put 'raise 'rational rational->scheme)
+  (put 'raise 'scheme-number scheme->complex)
+  'done)
+
+(define (raise n)
+  (let [[raise-op (get 'raise (type-tag n))]]
+    (if raise-op
+        (raise-op n)
+        (error "No raise op for " n))))
+
+(define (make-int-number n)
+  (attach-tag 'int n))
+
+(install-raise)
+(define int
+  (make-int-number 5))
+int
+
+(define rational
+  (raise int))
+rational
+
+(define scheme
+  (raise rational))
+scheme
+
+(define complex
+  (raise scheme))
+complex
