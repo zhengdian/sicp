@@ -195,6 +195,8 @@
   (define (make-from-mag-ang r a)
     ((get 'make-from-mag-ang 'polar) r a))
 
+  (define (real-part z) (apply-generic 'real-part z))
+  (define (imag-part z) (apply-generic 'imag-part z))
   ;;internal procedures
   (define (add-complex z1 z2)
     (make-from-real-imag (+ (real-part z1) (real-part z2))
@@ -245,7 +247,7 @@
       (make-scheme-number (/ (car content) (cdr content)))))
 
   (define (scheme->complex n)
-    (make-complex-from-real-imag n 0))
+    (make-complex-from-real-imag (contents n) 0))
 
   ;;interface
   (put 'raise 'int int->rational)
@@ -273,26 +275,28 @@
 
 (define (apply-generic op . args)
   (let [[type-tags (map type-tag args)]]
-    (cond ((= (length args) 2)
+    (cond ((= (length args) 1)
            (let [[proc (get op type-tags)]]
              (if proc
                  (apply proc (map contents args))
-                 (let [[type1 (car type-tags)]
-                    [type2 (cadr type-tags)]
-                    [a1 (car args)]
-                    [a2 (cadr args)]]
-                (let [[t1->t2 (get-coercion type1 type2)]
-                      [t2->t1 (get-coercion type2 type1)]]
-                  (cond (t1->t2
-                         (apply-generic op (t1->t2 a1) a2))
-                        (t2->t1
-                         (apply-generic op a1 (t2->t1 a2)))
-                        (else
-                         (error "No method for these types" (list op type-tags)))))))))
+                 (error "No methods"))))
+          ((= (length args) 2)
+           (let [[proc (get op type-tags)]]
+             (if proc
+                 (apply proc (map contents args))
+                 (let [[level-type1 (type-level (car args))]
+                       [level-type2 (type-level (cadr args))]
+                       [a1 (car args)]
+                       [a2 (cadr args)]]
+                   (cond ((< level-type1 level-type2)
+                          (apply-generic op (raise a1) a2))
+                         ((< level-type2 level-type1)
+                          (apply-generic op a1 (raise a2)))
+                         (else (error "No method for two same types" (list op type-tags))))))))
           ((> (length args) 2)
            (let [[front-two (apply-generic op (car args) (cadr args))]]
              (apply apply-generic op (cons front-two (cddr args)))))
-          (else "No method for these types" (list op type-tags)))))
+          (else ("No method for these types" (list op type-tags))))))
 
 (install-scheme-number-package)
 (install-rational-package)
@@ -300,6 +304,10 @@
 (install-polar-package)
 (install-complex-package)
 (install-raise)
+
+(add (make-int-number 4) (make-rational 5 2))
+
+(add (make-int-number 5) (make-complex-from-real-imag 5 3))
 
 
 
