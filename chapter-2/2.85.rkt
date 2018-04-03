@@ -240,31 +240,37 @@
 (define (install-raise)
   ;;internal procedures
   (define (int->rational n)
-    (make-rational (contents n) 1))
+    (make-rational n 1))
 
   (define (rational->scheme n)
-    (let [[content (contents n)]]
-      (make-scheme-number (/ (car content) (cdr content)))))
+    ((make-scheme-number (/ (car n) (cdr n)))))
 
   (define (scheme->complex n)
-    (make-complex-from-real-imag (contents n) 0))
+    (make-complex-from-real-imag n 0))
+
+  (define (complex->scheme n)
+    (+ 1 1))
 
   ;;interface
-  (put 'raise 'int int->rational)
-  (put 'raise 'rational rational->scheme)
-  (put 'raise 'scheme-number scheme->complex)
+  (put 'raise '(int) int->rational)
+  (put 'raise '(rational) rational->scheme)
+  (put 'raise '(scheme-number) scheme->complex)
 
+  (put 'project 'complex complex->scheme)
+  
   (put 'type-level 'int 0)
   (put 'type-level 'rational 1)
   (put 'type-level 'scheme-number 2)
   (put 'type-level 'complex 3)
   'done)
+;;;
+;(define (raise n)
+ ; (let [[raise-op (get 'raise (type-tag n))]]
+  ;  (if raise-op
+   ;     (raise-op n)
+    ;    (error "No raise op for " n))))
 
-(define (raise n)
-  (let [[raise-op (get 'raise (type-tag n))]]
-    (if raise-op
-        (raise-op n)
-        (error "No raise op for " n))))
+(define (raise n) (apply-generic 'raise n))
 
 (define (type-level n)
   (let [[type-level-op (get 'type-level (type-tag n))]]
@@ -272,6 +278,14 @@
         type-level-op
         (error "No such type-level" n))))
 
+(define (drop n)
+  (define (project n)
+    (+ 1 1))
+  (define (can-drop n)
+    (equal? n (raise (project n))))
+  ((if (can-drop n)
+        (drop (project n))
+        n)))
 
 (define (apply-generic op . args)
   (let [[type-tags (map type-tag args)]]
@@ -304,9 +318,15 @@
 (install-complex-package)
 (install-raise)
 
-(add (make-int-number 4) (make-rational 5 2))
+(make-rational 4 1)
+(raise (make-rational 4 1))
 
-(add (make-int-number 5) (make-complex-from-real-imag 5 3))
+;(add (make-int-number 4) (make-rational 5 2))
+
+;(add (make-int-number 5) (make-complex-from-real-imag 5 3))
+
+;(drop (make-complex-from-real-imag 5 0))
+
 
 
 
