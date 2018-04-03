@@ -243,8 +243,8 @@
     (make-rational n 1))
 
   (define (rational->scheme n)
-    ((make-scheme-number (/ (car n) (cdr n)))))
-
+    (make-scheme-number (/ (car n) (cdr n))))
+  
   (define (scheme->complex n)
     (make-complex-from-real-imag n 0))
 
@@ -318,12 +318,11 @@
 (install-complex-package)
 (install-raise)
 
-(make-rational 4 1)
 (raise (make-rational 4 1))
 
-;(add (make-int-number 4) (make-rational 5 2))
+(add (make-int-number 4) (make-rational 5 2))
 
-;(add (make-int-number 5) (make-complex-from-real-imag 5 3))
+(add (make-int-number 5) (make-complex-from-real-imag 5 3))
 
 ;(drop (make-complex-from-real-imag 5 0))
 

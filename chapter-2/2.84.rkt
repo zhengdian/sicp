@@ -240,19 +240,18 @@
 (define (install-raise)
   ;;internal procedures
   (define (int->rational n)
-    (make-rational (contents n) 1))
+    (make-rational n 1))
 
   (define (rational->scheme n)
-    (let [[content (contents n)]]
-      (make-scheme-number (/ (car content) (cdr content)))))
+      (make-scheme-number (/ (car n) (cdr n))))
 
   (define (scheme->complex n)
-    (make-complex-from-real-imag (contents n) 0))
+    (make-complex-from-real-imag n 0))
 
   ;;interface
-  (put 'raise 'int int->rational)
-  (put 'raise 'rational rational->scheme)
-  (put 'raise 'scheme-number scheme->complex)
+  (put 'raise '(int) int->rational)
+  (put 'raise '(rational) rational->scheme)
+  (put 'raise '(scheme-number) scheme->complex)
 
   (put 'type-level 'int 0)
   (put 'type-level 'rational 1)
@@ -260,11 +259,7 @@
   (put 'type-level 'complex 3)
   'done)
 
-(define (raise n)
-  (let [[raise-op (get 'raise (type-tag n))]]
-    (if raise-op
-        (raise-op n)
-        (error "No raise op for " n))))
+(define (raise n) (apply-generic 'raise n))
 
 (define (type-level n)
   (let [[type-level-op (get 'type-level (type-tag n))]]
