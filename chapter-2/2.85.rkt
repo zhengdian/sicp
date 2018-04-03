@@ -323,7 +323,7 @@
           ((= (length args) 2)
            (let [[proc (get op type-tags)]]
              (if proc
-                 (apply proc (map contents args))
+                 (drop (apply proc (map contents args)))
                  (let [[level-type1 (type-level (car args))]
                        [level-type2 (type-level (cadr args))]
                        [a1 (car args)]
@@ -352,5 +352,5 @@
 
 (drop (make-scheme-number 6))
 
-
+(add (make-complex-from-real-imag 5 0) (make-int-number 6))
 
