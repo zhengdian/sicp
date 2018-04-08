@@ -75,6 +75,12 @@
 (define (mul . args) (apply apply-generic 'mul args))
 (define (div . args) (apply apply-generic 'div args))
 
+(define (ab-square x) (mul x x))
+(define (ab-sqrt x) (apply-generic 'sqrt x))
+(define (ab-cos x) (apply-generic 'cos x))
+(define (ab-sin x) (apply-generic 'sin x))
+(define (ab-atan x y) (apply-generic 'atan x y))
+
 (define (install-scheme-number-package)
   (define (tag x) (attach-tag 'scheme-number x))
   (put 'add '(scheme-number scheme-number)
@@ -85,6 +91,14 @@
        (lambda (x y) (* x y)))
   (put 'div '(scheme-number scheme-number)
        (lambda (x y) (/ x y)))
+  (put 'sqrt '(scheme-number)
+       (lambda (x) (sqrt x)))
+  (put 'cos '(scheme-number)
+       (lambda (x) (cos x)))
+  (put 'sin '(scheme-number)
+       (lambda (x) (sin x)))
+  (put 'atan '(scheme-number scheme-number)
+       (lambda (x y) (atan x y)))
   )
 
 (define (install-rational-package)
@@ -94,11 +108,11 @@
     (let [[g (gcd n d)]]
       (cons (/ n g) (/ d g))))
   (define (add-rat x y)
-    (make-rat (+ (* (numer x) (denom y))
-                 (* (numer y) (denom x)))
-              (* (denom x) (denom y))))
+    (make-rat (add (mul (numer x) (denom y))
+                 (mul (numer y) (denom x)))
+              (mul (denom x) (denom y))))
   (define (sub-rat x y)
-    (make-rat (- (* (numer x) (denom y))
+    (make-rat (sub (* (numer x) (denom y))
                  (* (numer y) (denom x)))
               (* (denom x) (denom y))))
   (define (mul-rat x y)
@@ -118,6 +132,24 @@
        (lambda (x y) (tag (add-rat x y))))
   (put 'div '(rational rational)
        (lambda (x y) (tag (add-rat x y))))
+
+  (put 'sqrt '(rational)
+       (lambda (x) (let [[val (/ (numer x) (denom x))]]
+                     (tag (make-rat (sqrt val) 1)))))
+
+  (put 'sin '(rational)
+       (lambda (x) (let [[val (/ (numer x) (denom x))]]
+                     (tag (make-rat (sin val) 1)))))
+
+  (put 'cos '(rational)
+       (lambda (x) (let [[val (/ (numer x) (denom x))]]
+                     (tag (make-rat (cos val) 1)))))
+
+  (put 'atan '(rational rational)
+       (lambda (x y) (let [[val-x (/ (numer x) (denom x))]
+                           [val-y (/ (numer y) (denom y))]]
+                     (tag (make-rat (atan val-x val-y) 1)))))
+  
   (put 'make 'rational
        (lambda (n d) (tag (make-rat n d))))
   )
@@ -128,17 +160,16 @@
 
 (define (install-rectangular-package)
   ;;internal procedures
-  (define (square x) (mul x x))
   (define (make-from-real-imag x y) (cons x y))
   (define (make-from-mag-ang r a)
     (cons (mul r (cos a)) (mul r (sin a))))
   (define (real-part z) (car z))
   (define (imag-part z) (cdr z))
   (define (magnitude z)
-    (sqrt (add (square (real-part z))
-               (square (imag-part z)))))
+    (ab-sqrt (add (ab-square (real-part z))
+                  (ab-square (imag-part z)))))
   (define (angle z)
-    (atan (imag-part z) (real-part z)))
+    (ab-atan (imag-part z) (real-part z)))
 
   ;;interface to the rest of the system
   (define (tag x) (attach-tag 'rectangular x))
@@ -159,11 +190,11 @@
   (define (angle z) (cdr z))
   (define (make-from-mag-ang r a) (cons r a))
   (define (real-part z)
-    (mul (magnitude z) (cos (angle z))))
+    (mul (magnitude z) (ab-cos (angle z))))
   (define (imag-part z)
-    (mul (magnitude z) (sin (angle z))))
+    (mul (magnitude z) (ab-sin (angle z))))
   (define (make-from-real-imag x y)
-    (cons (sqrt (add (square x) (square y)))
+    (cons (ab-sqrt (add (square x) (square y)))
           (atan y x)))
 
   ;;interface to the rest of the system
@@ -190,19 +221,21 @@
 
   (define (real-part z) (apply-generic 'real-part z))
   (define (imag-part z) (apply-generic 'imag-part z))
+  (define (magnitude z) (apply-generic 'magnitude z))
+  (define (angle z) (apply-generic 'angle z))
   ;;internal procedures
   (define (add-complex z1 z2)
-    (make-from-real-imag (+ (real-part z1) (real-part z2))
-                         (+ (imag-part z1) (imag-part z2))))
+    (make-from-real-imag (add (real-part z1) (real-part z2))
+                         (add (imag-part z1) (imag-part z2))))
   (define (sub-complex z1 z2)
-    (make-from-real-imag (- (real-part z1) (real-part z2))
-                         (- (imag-part z1) (imag-part z2))))
+    (make-from-real-imag (sub (real-part z1) (real-part z2))
+                         (sub (imag-part z1) (imag-part z2))))
   (define (mul-complex z1 z2)
-    (make-from-mag-ang (* (magnitude z1) (magnitude z2))
-                       (+ (angle z1) (angle z2))))
+    (make-from-mag-ang (mul (magnitude z1) (magnitude z2))
+                       (add (angle z1) (angle z2))))
   (define (div-complex z1 z2)
-    (make-from-mag-ang (/ (magnitude z1) (magnitude z2))
-                       (- (angle z1) (angle z2))))
+    (make-from-mag-ang (div (magnitude z1) (magnitude z2))
+                       (add (angle z1) (angle z2))))
 
   ;;interface to rest of the system
   (define (tag z) (attach-tag 'complex z))
@@ -239,6 +272,27 @@
 (define (imag-part n)
   ((get 'imag-part 'complex) (contents n)))
 
+
+(define (install-int)
+  ;;internal
+  (define (add-int a b) (add a b))
+  (define (sub-int a b) (sub a b))
+  (define (mul-int a b) (mul a b))
+  (define (div-int a b) (div a b))
+  (define (sqrt-int x) (sqrt x))
+  ;;interface
+  (put 'add '(int int) add-int)
+  (put 'sub '(int int) sub-int)
+  (put 'mul '(int int) mul-int)
+  (put 'div '(int int) div-int)
+  (put 'sqrt '(int) sqrt-int)
+  (put 'sin '(int)
+       (lambda (x) (sin x)))
+  (put 'cos '(int)
+       (lambda (x) (cos x)))
+  (put 'atan '(int int)
+       (lambda (x y) (atan x y)))
+  )
 
 (define (make-int-number n)
   (cons 'int n))
@@ -310,11 +364,11 @@
            (let [[proc (get op type-tags)]]
              (if proc
                  (apply proc (map contents args))
-                 (error "No methods"))))
+                 (error "No methods" (list op type-tags)))))
           ((= (length args) 2)
            (let [[proc (get op type-tags)]]
              (if proc
-                 (drop (apply proc (map contents args)))
+                 (apply proc (map contents args))
                  (let [[level-type1 (type-level (car args))]
                        [level-type2 (type-level (cadr args))]
                        [a1 (car args)]
@@ -329,8 +383,9 @@
              (apply apply-generic op (cons front-two (cddr args)))))
           (else ("No method for these types" (list op type-tags))))))
 
-(install-scheme-number-package)
+(install-int)
 (install-rational-package)
+(install-scheme-number-package)
 (install-complex-package)
 (install-raise)
 
@@ -343,4 +398,10 @@
 
 (add 9 9)
 
+(define a (make-complex-from-real-imag (make-int-number 9) (make-int-number 5)))
+(define b (make-complex-from-real-imag (make-int-number 7) (make-int-number 3)))
+(define c (make-complex-from-real-imag 9 5))
+(define d (make-complex-from-real-imag 7 3))
+(mul c d)
+(mul a b)
 

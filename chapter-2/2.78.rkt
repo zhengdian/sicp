@@ -63,12 +63,7 @@
        (lambda (x y) (* x y)))
   (put 'div '(scheme-number scheme-number)
        (lambda (x y) (/ x y)))
-  (put 'make 'scheme-number
-       (lambda (x) x))
   'done)
-
-(define (make-scheme-number n)
-  ((get 'make 'scheme-number) n))
 
 (define (install-rational-package)
   (define (numer x) (car x))
