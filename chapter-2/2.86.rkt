@@ -402,6 +402,6 @@
 (define b (make-complex-from-real-imag (make-int-number 7) (make-int-number 3)))
 (define c (make-complex-from-real-imag 9 5))
 (define d (make-complex-from-real-imag 7 3))
-(mul c d)
+(add c d)
 (mul a b)
 
