@@ -416,7 +416,7 @@
 
   (define (poly-negative poly)
     (make-polynomial (variable poly)
-                     (negative-termlist (term-list poly))))
+                     (negative-term-list (term-list poly))))
 
   (define (add-poly p1 p2)
     (if (same-variable? (variable p1) (variable p2))
@@ -430,7 +430,7 @@
     (if (same-variable? (variable p1) (variable p2))
         (make-poly (variable p1)
                    (add-terms (term-list p1)
-                              (negative-termlist (term-list p2))))
+                              (negative-term-list (term-list p2))))
         (error "Polys not in same var -- SUB_POLY"
                (list p1 p2))))
 #|
@@ -491,6 +491,7 @@
 (define (first-term term-list) (car term-list))
 (define (rest-terms term-list) (cdr term-list))
 (define (empty-termlist? term-list) (null? term-list))
+
 (define (negative-termlist term-list)
   (define (term-list-negative terms result)
       (if (empty-termlist? terms)
@@ -500,6 +501,12 @@
                                                              (negative (coeff (first-term terms))))]]
                                 (append result (list negative-term))))))
   (term-list-negative term-list '()))
+
+(define (negative-term-list term-list) ;; use map implement will be more concise
+  (map (lambda (term)
+         (make-term (order term)
+                    (negative (coeff term))))
+       term-list))
 
 (define (make-term order coeff) (list order coeff))
 (define (order term) (car term))
@@ -519,5 +526,4 @@
 (newline)
 (display (add p1 p2))
 (newline)
-
 (display (sub p1 p2))
