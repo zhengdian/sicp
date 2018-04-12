@@ -456,6 +456,7 @@
                      t2 (add-terms L1 (rest-terms L2))))
                    (else
                     (adjoin-term
+                     
                      (make-term (order t1)
                                 (add (coeff t1) (coeff t2))) ; not add-poly but add, this will tag coeff which is polynomial
                      (add-terms (rest-terms L1)
@@ -463,13 +464,13 @@
 
   (define (mul-terms L1 L2)
     (if (empty-termlist? L1)
-        (the-empty-termlist)
+        (the-empty-termlist (type-tag L1)) ;; 增加一个参数用于初始化类型
         (add-terms (mul-term-by-all-terms (first-term L1) L2)
                    (mul-terms (rest-terms L1) L2))))
 
   (define (mul-term-by-all-terms t1 L)
     (if (empty-termlist? L)
-        (the-empty-termlist)
+        (the-empty-termlist (type-tag L)) ;; 增加一个参数用于初始化类型
         (let [[t2 (first-term L)]]
           (adjoin-term
            (make-term (+ (order t1) (order t2))
@@ -491,6 +492,8 @@
        (lambda (p1 p2) (tag (mul-poly p1 p2)))) |#
   (put 'make 'polynomial
        (lambda (var terms) (tag (make-poly var terms))))
+  
+
   )
 
 (define (=zero? x) (apply-generic '=zero? x))
@@ -499,49 +502,101 @@
 (define (make-polynomial var terms)
   ((get 'make 'polynomial) var terms))
 
-;;;term-list
+;;;term list 通用操作
 (define (adjoin-term term term-list)
-  (if (=zero? (coeff term))
-      term-list
-      (cons term term-list)))
-(define (the-empty-termlist) '())
-(define (first-term term-list) (car term-list))
-(define (rest-terms term-list) (cdr term-list))
-(define (empty-termlist? term-list) (null? term-list))
-(define (negative-termlist term-list)
-  (define (term-list-negative terms result)
-      (if (empty-termlist? terms)
-          result
-          (term-list-negative (rest-terms terms)
-                              (let [[negative-term (make-term (order (first-term terms))
-                                                             (negative (coeff (first-term terms))))]]
-                                (append result (list negative-term))))))
-  (term-list-negative term-list '()))
+  (let [[op (get 'adjoin-term (type-tag term-list))]]
+    (op term (contents term-list)))) 
+(define (first-term term-list) (apply-generic 'first-term term-list)) ;; return max order term of term-list
+(define (rest-terms term-list) (apply-generic 'rest-terms term-list)) ;; return sub term list except first order
+(define (empty-termlist? term-list) (apply-generic 'empty-termlist? term-list))
 
-(define (negative-term-list term-list) ;; use map implement will be more concise,但是依赖于项表的实现，对稀疏项表不可用
+;;;sparse term list
+(define (install-sparse-term)
+  ;;internal
+  (define (adjoin-term term term-list)
+    (if (=zero? (coeff term))
+        (tag term-list)
+        (tag (cons term term-list))))
+  (define (first-term term-list) (car term-list)) ;; return max order term of term-list
+  (define (rest-terms term-list) (tag (cdr term-list))) ;; return sub term list except first order
+  (define (empty-termlist? term-list) (null? term-list))
+  ;;interface
+  (define (tag tl) (attach-tag 'sparse-term-list tl))
+  
+  (put 'adjoin-term 'sparse-term-list adjoin-term)
+  (put 'first-term '(sparse-term-list) first-term)
+  (put 'rest-terms '(sparse-term-list) rest-terms)
+  (put 'empty-termlist? '(sparse-term-list) empty-termlist?)
+  )
+
+;;;dense term list -- (3 4 2 7 5) -- 规定首项系数非0，末项次数为0
+(define (install-dense-term)
+  ;;internal
+  (define (adjoin-term term term-list)
+    (if (=zero? (coeff term))
+        (tag term-list)
+        (tag (cons (coeff term) (pad (order term) term-list)))))
+
+  (define (pad order term-list) ;; pad order - 1 terms in term-list
+    (define (max-order list) (- (length list) 1))
+    (let [[target-order (- order 1)]
+          [list-order (- (length term-list) 1)]]
+      (cond ((= target-order list-order) term-list)
+            ((> target-order list-order) (pad order (cons 0 term-list)))
+            (else (error "target-order < list-order" (list target-order list-order))))))
+
+  (define (first-term term-list)
+    (make-term (- (length term-list) 1)
+               (car term-list)))
+  (define (rest-terms term-list);; move to next non-zero item
+    (define (move-non-zero term-list)
+      (cond ((empty-termlist? term-list) term-list)
+            ((=zero? (car term-list)) (move-non-zero (cdr term-list)))
+            (else term-list)))
+    (if (empty-termlist? term-list)
+        (tag term-list)
+        (tag (move-non-zero (cdr term-list)))))
+  (define (empty-termlist? term-list) (null? term-list))
+  ;;interface
+  (define (tag tl) (attach-tag 'dense-term-list tl))
+
+  (put 'adjoin-term 'dense-term-list adjoin-term)
+  (put 'first-term '(dense-term-list) first-term)
+  (put 'rest-terms '(dense-term-list) rest-terms)
+  (put 'empty-termlist? '(dense-term-list) empty-termlist?)
+  )
+
+
+#|
+(define (negative-termlist term-list) ;; 依赖于项表实现的实现
   (map (lambda (term)
          (make-term (order term)
                     (negative (coeff term))))
        term-list))
+|#
 
 (define (negative-term-list term-list) ;;不依赖于项表实现的实现
   (adjoin-term (let [[first-order-term (first-term term-list)]]
                  (make-term (order first-order-term)
                             (negative (coeff first-order-term))))
-               (negative-termlist (rest-terms term-list))))
+               (negative-term-list (rest-terms term-list))))
 
 (define (make-term order coeff) (list order coeff))
 (define (order term) (car term))
 (define (coeff term) (cadr term))
 
+(define (the-empty-termlist list-type) (list list-type))
+
+(install-sparse-term)
+(install-dense-term)
 
 (install-polynomial-package)
-(define t1 '((5 3) (4 2) (2 2) (1 9)))
+(define t1 '(sparse-term-list (5 3) (4 -2) (2 2) (1 9)))
 (define p1 (make-polynomial 'x t1))
 (display p1)
 
 (newline)
-(define t2 '((7 2) (6 0) (5 10) (4 1) (2 0) (1 1)))
+(define t2 '(sparse-term-list (7 2) (6 0) (5 10) (4 1) (2 -3) (1 1)))
 (define p2 (make-polynomial 'x t2))
 (display p2)
 
@@ -550,3 +605,19 @@
 (newline)
 
 (display (mul p1 p2))
+
+;;;2.89
+(define dense-t1 '(dense-term-list 3 -2 0 2 9 0))
+(define dense-t2 '(dense-term-list 2 0 10 1 0 -3 1 0))
+(define dense-p1 (make-polynomial 'x dense-t1))
+(define dense-p2 (make-polynomial 'x dense-t2))
+(newline)
+(display (add dense-p1 dense-p2))
+(newline)
+(display (mul dense-p1 dense-p2))
+
+
+
+#|
+关键点在于对空表的处理，the-empty-termlist这一不带参数的过程无法进行类型通用化操作，这里有三种处理方法，如果认为空表不带任何类型，即表示为'()，我们就可以使用不带参数的空表——那么在adjoin-term过程中，就要对于向空表中加入第一个元素时选择是稠密表示还是稀疏表示，需要修改高阶过程，较为复杂；第二种方法是空表也带参数类型，这样就要给the-empty-termlist增加一个参数，用于初始化空表的类型；进一步优化第二种方法得到第三种处理方法，观察到高阶过程对于the-empty-termlist的调用都是在empty-termlist?返回true之后调用的，那么我们可以修改高阶过程，不调用the-empty--termlist，而是直接由已经是空表的参数表示空表。避免了调用the-empty-termlist过程，不过这种处理只是简单的回避了空表，并未解决问题。这里选择第二种方法
+|#
