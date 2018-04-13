@@ -429,8 +429,8 @@
   (define (sub-poly p1 p2)
     (if (same-variable? (variable p1) (variable p2))
         (make-poly (variable p1)
-                   (add-terms (term-list p1)
-                              (negative-term-list (term-list p2))))
+                   (sub-terms (term-list p1)
+                              (term-list p2)))
         (error "Polys not in same var -- SUB_POLY"
                (list p1 p2))))
 
@@ -440,6 +440,14 @@
                    (mul-terms (term-list p1)
                               (term-list p2)))
         (error "Polys not in same var -- MUL_POLY"
+               (list p1 p2))))
+
+  (define (div-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (div-terms (term-list p1)
+                              (term-list p2)))
+        (error "Poly not in same var -- DIV_POLY"
                (list p1 p2))))
 
   (define (add-terms L1 L2)
@@ -462,6 +470,10 @@
                      (add-terms (rest-terms L1)
                                 (rest-terms L2)))))))))
 
+  (define (sub-terms L1 L2)
+    (add-terms L1
+               (negative-term-list L2)))
+
   (define (mul-terms L1 L2)
     (if (empty-termlist? L1)
         (the-empty-termlist (type-tag L1)) ;; 增加一个参数用于初始化类型
@@ -476,6 +488,21 @@
            (make-term (+ (order t1) (order t2))
                       (mul (coeff t1) (coeff t2)))
            (mul-term-by-all-terms t1 (rest-terms L))))))
+
+  (define (div-terms L1 L2)
+    (if (empty-termlist? L1)
+        (list (the-empty-termlist (type-tag L1)) (the-empty-termlist (type-tag L1)))
+        (let [[t1 (first-term L1)]
+              [t2 (first-term L2)]]
+          (if (> (order t2) (order t1))
+              (list (the-empty-termlist (type-tag L1)) L1)
+              (let [[new-c (div (coeff t1) (coeff t2))]
+                    [new-o (- (order t1) (order t2))]]
+                (let [[new-term (make-term new-o new-c)]
+                      [remainder-terms (sub-terms L1 (mul-term-by-all-terms (make-term new-o new-c) L2))]]
+                  (let [[rest-of-result (div-terms remainder-terms L2)]
+                        [new-term-list (adjoin-term new-term (the-empty-termlist (type-tag L2)))]]
+                    (list (add-terms new-term-list (car rest-of-result)) (cadr rest-of-result)))))))))
   
   ;;interface
   (define (tag p) (attach-tag 'polynomial p))
@@ -486,14 +513,14 @@
        (lambda (p1 p2) (tag (sub-poly p1 p2))))
   (put 'mul '(polynomial polynomial)
        (lambda (p1 p2) (tag (mul-poly p1 p2))))
+  (put 'div '(polynomial polynomial)
+       (lambda (p1 p2) (tag (div-poly p1 p2))))
   (put 'negative '(polynomial) poly-negative)
   #|
   (put 'mul '(polynomial polynomial)
        (lambda (p1 p2) (tag (mul-poly p1 p2)))) |#
   (put 'make 'polynomial
        (lambda (var terms) (tag (make-poly var terms))))
-  
-
   )
 
 (define (=zero? x) (apply-generic '=zero? x))
@@ -557,7 +584,6 @@
         (tag term-list)
         (tag (move-non-zero (cdr term-list)))))
   (define (empty-termlist? term-list) (null? term-list))
-
   ;;interface
   (define (tag tl) (attach-tag 'dense-term-list tl))
 
@@ -565,7 +591,6 @@
   (put 'first-term '(dense-term-list) first-term)
   (put 'rest-terms '(dense-term-list) rest-terms)
   (put 'empty-termlist? '(dense-term-list) empty-termlist?)
-  ;(put 'negative-term-list '(dens-term-list) negative-term-list)
   )
 
 
@@ -605,23 +630,33 @@
 (display p2)
 
 (newline)
+(display (add p1 p2))
+(newline)
 (display (sub p1 p2))
 (newline)
 
 (display (mul p1 p2))
 
-;;;2.89
+;;;2.89 - 2.90
 (define dense-t1 '(dense-term-list 3 -2 0 2 9 0))
 (define dense-t2 '(dense-term-list 2 0 10 1 0 -3 1 0))
 (define dense-p1 (make-polynomial 'x dense-t1))
 (define dense-p2 (make-polynomial 'x dense-t2))
 (newline)
-(display (add dense-p1 dense-p2))
+(display (sub dense-p1 dense-p2))
 (newline)
 (display (mul dense-p1 dense-p2))
 
+;;;2.91
+(newline)
+(define test-div-p1 '(polynomial x sparse-term-list (5 1) (0 -1)))
+(define test-div-p2 '(polynomial x sparse-term-list (2 1) (0 -1)))
+(display (div test-div-p1 test-div-p2))
 
-
+(newline)
+(define test-div-p3 '(polynomial x dense-term-list 1 0 0 0 0 -1))
+(define test-div-p4 '(polynomial x dense-term-list 1 0 -1))
+(display (div test-div-p3 test-div-p4))
 #|
-关键点在于对空表的处理，the-empty-termlist这一不带参数的过程无法进行类型通用化操作，这里有三种处理方法，如果认为空表不带任何类型，即表示为'()，我们就可以使用不带参数的空表——那么在adjoin-term过程中，就要对于向空表中加入第一个元素时选择是稠密表示还是稀疏表示，需要修改高阶过程，较为复杂；第二种方法是空表也带参数类型，这样就要给the-empty-termlist增加一个参数，用于初始化空表的类型；进一步优化第二种方法得到第三种处理方法，观察到高阶过程对于the-empty-termlist的调用都是在empty-termlist?返回true之后调用的，那么我们可以修改高阶过程，不调用the-empty--termlist，而是直接由已经是空表的参数表示空表。避免了调用the-empty-termlist过程，不过这种处理只是简单的回避了空表，并未解决问题。这里选择第二种方法
+在作者一题时用了两个多小时debug，主要是调用the-empty-termlist时给的是L而不是L的type,mul-terms和add-terms的第一个参数给的是term而不是termlist，其实都是很简单的参数错误，但Racket调试器又慢又不好用，bug异常难定位，深深体会到了何谓类型不安全
 |#
