@@ -99,7 +99,12 @@
        (lambda (x) (sin x)))
   (put 'atan '(scheme-number scheme-number)
        (lambda (x y) (atan x y)))
+  (put 'greatest-common-divisor '(scheme-number scheme-number) gcd)
 
+  (put 'reduce '(scheme-number scheme-number)
+       (lambda (x y) (let [[g (gcd x y)]]
+                       (list (/ x g) (/ y g)))))
+  
   (put '=zero? '(scheme-number)
        (lambda (x) (= x 0)))
   (put 'negative '(scheme-number)
@@ -110,8 +115,8 @@
   (define (numer x) (car x))
   (define (denom x) (cdr x))
   (define (make-rat n d)
-    (let [[g (gcd n d)]]
-      (cons (/ n g) (/ d g))))
+    (let [[rd (reduce n d)]]
+      (cons (car rd) (cadr rd))))
   (define (add-rat x y)
     (make-rat (add (mul (numer x) (denom y))
                  (mul (numer y) (denom x)))
@@ -450,62 +455,27 @@
         (error "Poly not in same var -- DIV_POLY"
                (list p1 p2))))
 
-  (define (add-terms L1 L2)
-    (cond ((empty-termlist? L1) L2)
-          ((empty-termlist? L2) L1)
-          (else
-           (let [[t1 (first-term L1)]
-                 [t2 (first-term L2)]]
-             (cond ((> (order t1) (order t2))
-                    (adjoin-term
-                     t1 (add-terms (rest-terms L1) L2)))
-                   ((< (order t1) (order t2))
-                    (adjoin-term
-                     t2 (add-terms L1 (rest-terms L2))))
-                   (else
-                    (adjoin-term
-                     
-                     (make-term (order t1)
-                                (add (coeff t1) (coeff t2))) ; not add-poly but add, this will tag coeff which is polynomial
-                     (add-terms (rest-terms L1)
-                                (rest-terms L2)))))))))
+  (define (gcd-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (gcd-terms (term-list p1)
+                              (term-list p2)))
+        (error "Poly not in same var -- GCD_POLY"
+               (list p1 p2))))
 
-  (define (sub-terms L1 L2)
-    (add-terms L1
-               (negative-term-list L2)))
-
-  (define (mul-terms L1 L2)
-    (if (empty-termlist? L1)
-        (the-empty-termlist (type-tag L1)) ;; 增加一个参数用于初始化类型
-        (add-terms (mul-term-by-all-terms (first-term L1) L2)
-                   (mul-terms (rest-terms L1) L2))))
-
-  (define (mul-term-by-all-terms t1 L)
-    (if (empty-termlist? L)
-        (the-empty-termlist (type-tag L)) ;; 增加一个参数用于初始化类型
-        (let [[t2 (first-term L)]]
-          (adjoin-term
-           (make-term (+ (order t1) (order t2))
-                      (mul (coeff t1) (coeff t2)))
-           (mul-term-by-all-terms t1 (rest-terms L))))))
-
-  (define (div-terms L1 L2)
-    (if (empty-termlist? L1)
-        (list (the-empty-termlist (type-tag L1)) (the-empty-termlist (type-tag L1)))
-        (let [[t1 (first-term L1)]
-              [t2 (first-term L2)]]
-          (if (> (order t2) (order t1))
-              (list (the-empty-termlist (type-tag L1)) L1)
-              (let [[new-c (div (coeff t1) (coeff t2))]
-                    [new-o (- (order t1) (order t2))]]
-                (let [[new-term (make-term new-o new-c)]
-                      [remainder-terms (sub-terms L1 (mul-term-by-all-terms (make-term new-o new-c) L2))]]
-                  (let [[rest-of-result (div-terms remainder-terms L2)]
-                        [new-term-list (adjoin-term new-term (the-empty-termlist (type-tag L2)))]]
-                    (list (add-terms new-term-list (car rest-of-result)) (cadr rest-of-result)))))))))
+  (define (reduce-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (let [[result (reduce-terms (term-list p1)
+                                    (term-list p2))]
+              [var (variable p1)]]
+          (list (tag (make-poly var (car result)))
+                (tag (make-poly var (cadr result)))))
+        (error "Poly not in same var -- REDUCE_POLY"
+               (list p1 p2))))
   
   ;;interface
   (define (tag p) (attach-tag 'polynomial p))
+  (put 'negative '(polynomial) poly-negative)
   (put '=zero? '(polynomial) poly=zero?)
   (put 'add '(polynomial polynomial)
        (lambda (p1 p2) (tag (add-poly p1 p2))))
@@ -515,10 +485,10 @@
        (lambda (p1 p2) (tag (mul-poly p1 p2))))
   (put 'div '(polynomial polynomial)
        (lambda (p1 p2) (tag (div-poly p1 p2))))
-  (put 'negative '(polynomial) poly-negative)
-  #|
-  (put 'mul '(polynomial polynomial)
-       (lambda (p1 p2) (tag (mul-poly p1 p2)))) |#
+  (put 'greatest-common-divisor '(polynomial polynomial)
+       (lambda (p1 p2) (tag (gcd-poly p1 p2))))
+  (put 'reduce '(polynomial polynomial) reduce-poly)
+  
   (put 'make 'polynomial
        (lambda (var terms) (tag (make-poly var terms))))
   )
@@ -556,7 +526,7 @@
   (put 'empty-termlist? '(sparse-term-list) empty-termlist?)
   )
 
-;;;dense term list -- (3 4 2 7 5) -- 规定首项系数非0，末项次数为0
+;;;dense term list -- (3 4 2 7 5) -- 规定首项系数非0,末项次数为0
 (define (install-dense-term)
   ;;internal
   (define (adjoin-term term term-list)
@@ -610,53 +580,138 @@
                                 (negative (coeff first-order-term))))
                    (negative-term-list (rest-terms term-list)))))
 
+(define (term-list-coeffs term-list) ;;不依赖于项表实现的实现
+    (if (empty-termlist? term-list)
+        nil
+        (cons (let [[first-order-term (first-term term-list)]]
+                (coeff first-order-term))
+              (term-list-coeffs (rest-terms term-list)))))
+
 (define (make-term order coeff) (list order coeff))
 (define (order term) (car term))
 (define (coeff term) (cadr term))
 
+;;terms
 (define (the-empty-termlist list-type) (list list-type))
+
+(define (add-terms L1 L2)
+    (cond ((empty-termlist? L1) L2)
+          ((empty-termlist? L2) L1)
+          (else
+           (let [[t1 (first-term L1)]
+                 [t2 (first-term L2)]]
+             (cond ((> (order t1) (order t2))
+                    (adjoin-term
+                     t1 (add-terms (rest-terms L1) L2)))
+                   ((< (order t1) (order t2))
+                    (adjoin-term
+                     t2 (add-terms L1 (rest-terms L2))))
+                   (else
+                    (adjoin-term
+                     
+                     (make-term (order t1)
+                                (add (coeff t1) (coeff t2))) ; not add-poly but add, this will tag coeff which is polynomial
+                     (add-terms (rest-terms L1)
+                                (rest-terms L2)))))))))
+
+(define (sub-terms L1 L2)
+  (add-terms L1
+             (negative-term-list L2)))
+
+(define (mul-terms L1 L2)
+  (if (empty-termlist? L1)
+      (the-empty-termlist (type-tag L1)) ;; 增加一个参数用于初始化类型
+      (add-terms (mul-term-by-all-terms (first-term L1) L2)
+                 (mul-terms (rest-terms L1) L2))))
+
+(define (mul-term-by-all-terms t1 L)
+  (if (empty-termlist? L)
+      (the-empty-termlist (type-tag L)) ;; 增加一个参数用于初始化类型
+      (let [[t2 (first-term L)]]
+        (adjoin-term
+         (make-term (+ (order t1) (order t2))
+                    (mul (coeff t1) (coeff t2)))
+         (mul-term-by-all-terms t1 (rest-terms L))))))
+
+(define (div-terms L1 L2)
+  (if (empty-termlist? L1)
+      (list (the-empty-termlist (type-tag L1)) (the-empty-termlist (type-tag L1)))
+      (let [[t1 (first-term L1)]
+            [t2 (first-term L2)]]
+        (if (> (order t2) (order t1))
+            (list (the-empty-termlist (type-tag L1)) L1)
+            (let [[new-c (div (coeff t1) (coeff t2))]
+                  [new-o (- (order t1) (order t2))]]
+              (let [[new-term (make-term new-o new-c)]
+                    [remainder-terms (sub-terms L1 (mul-term-by-all-terms (make-term new-o new-c) L2))]]
+                (let [[rest-of-result (div-terms remainder-terms L2)]
+                      [new-term-list (adjoin-term new-term (the-empty-termlist (type-tag L2)))]]
+                  (list (add-terms new-term-list (car rest-of-result)) (cadr rest-of-result)))))))))
+
+(define (remainder-terms a b)
+  (let [[result (div-terms a b)]]
+    (cadr result)))
+
+(define (pseudoremainder-terms a b)
+  (define (exp m n)
+    (cond ((= n 0) 1)
+          ((= n 1) m)
+          (else (* m (exp m (- n 1))))))
+  (let [[c (coeff (first-term b))]
+        [O1 (order (first-term a))]
+        [O2 (order (first-term b))]]
+    (let [[c-coeff (exp c (+ 1 O1 O2))]]
+      (let [[result (div-terms (mul-term-by-all-terms (make-term 0 c-coeff) a) b)]]
+        (cadr result)))))
+
+
+(define (gcd-terms a b)
+  (define (div-terms-by-number terms n)
+    (if (> n 0)
+        (car (div-terms terms
+                        (adjoin-term (make-term 0 n) (the-empty-termlist (type-tag terms)))))
+        (error "n <= 0")))
+  (if (empty-termlist? b)
+      (let [[coeffs (term-list-coeffs a)]]
+        (let [[gcd-coeffs (apply gcd coeffs)]]
+          (div-terms-by-number a gcd-coeffs)))
+      (gcd-terms b (pseudoremainder-terms a b))))
+
+(define (reduce-terms n d)
+  (let [[gcd_terms (gcd-terms n d)]]
+    (list (car (div-terms n gcd_terms))
+          (car (div-terms d gcd_terms)))))
+
+(define (greatest-common-divisor a b)
+  (apply-generic 'greatest-common-divisor a b))
+(define (reduce a b)
+  (apply-generic 'reduce a b))
 
 (install-sparse-term)
 (install-dense-term)
-
 (install-polynomial-package)
-(define t1 '(sparse-term-list (5 3) (4 -2) (2 2) (1 9)))
-(define p1 (make-polynomial 'x t1))
-(display p1)
 
+;;2.93,2.94
 (newline)
-(define t2 '(sparse-term-list (7 2) (6 0) (5 10) (4 1) (2 -3) (1 1)))
-(define p2 (make-polynomial 'x t2))
-(display p2)
-
+(define p1 '(polynomial x sparse-term-list (1 1) (0 1)))
+(define p2 '(polynomial x sparse-term-list (3 1) (0 -1)))
+(define r1 (make-rational p1 p2))
+(define r2 (make-rational '(polynomial x sparse-term-list (1 1))
+                          '(polynomial x sparse-term-list (2 1) (0 -1))))
 (newline)
-(display (add p1 p2))
-(newline)
-(display (sub p1 p2))
+(display (greatest-common-divisor '(polynomial x sparse-term-list (4 1) (3 -1) (2 -2) (1 2))
+                                  '(polynomial x sparse-term-list (3 1) (1 -1))))
 (newline)
 
-(display (mul p1 p2))
+;;2.95 2.96
+(define aP1 '(polynomial x sparse-term-list (2 1) (1 -2) (0 1)))
+(define aP2 '(polynomial x sparse-term-list (2 11) (0 7)))
+(define aP3 '(polynomial x sparse-term-list (1 13) (0 5)))
+(define Q1 (mul aP1 aP2))
+(define Q2 (mul aP2 aP3))
+(display (greatest-common-divisor Q1 Q2))
 
-;;;2.89 - 2.90
-(define dense-t1 '(dense-term-list 3 -2 0 2 9 0))
-(define dense-t2 '(dense-term-list 2 0 10 1 0 -3 1 0))
-(define dense-p1 (make-polynomial 'x dense-t1))
-(define dense-p2 (make-polynomial 'x dense-t2))
+;;2.97
 (newline)
-(display (sub dense-p1 dense-p2))
-(newline)
-(display (mul dense-p1 dense-p2))
-
-;;;2.91
-(newline)
-(define test-div-p1 '(polynomial x sparse-term-list (5 1) (0 -1)))
-(define test-div-p2 '(polynomial x sparse-term-list (2 1) (0 -1)))
-(display (div test-div-p1 test-div-p2))
-
-(newline)
-(define test-div-p3 '(polynomial x dense-term-list 1 0 0 0 0 -1))
-(define test-div-p4 '(polynomial x dense-term-list 1 0 -1))
-(display (div test-div-p3 test-div-p4))
-#|
-在做这一题时用了两个多小时debug，主要是调用the-empty-termlist时给的是L而不是L的type,mul-terms和add-terms的第一个参数给的是term而不是termlist，其实都是很简单的参数错误，但Racket调试器又慢又不好用，bug异常难定位，深深体会到了何谓类型不安全
-|#
+(display (add r1 r2))
+(make-rational 12 36)
