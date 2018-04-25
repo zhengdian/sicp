@@ -19,7 +19,12 @@
     (if (null? x)
         y
         (let [[temp (cdr x)]]
+          (display x)
+          (display y)
           (set-cdr! x y)
+          (display '=>)
+          (display x)
+          (newline)
           (loop temp x))))
   (loop x '()))
 
@@ -27,6 +32,6 @@
 
 (define w (mystery v))
 
-(display v)
+(newline)
 (display w)
 
